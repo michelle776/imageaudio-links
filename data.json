@@ -1,0 +1,38 @@
+{
+  "social": [
+    {
+      "type": "instagram",
+      "url": "https://www.instagram.com/imageaudio/"
+    },
+    {
+      "type": "facebook",
+      "url": "https://www.facebook.com/imageaudiotw/"
+    }
+  ],
+  "news": [
+    {
+      "image": "images/pulse-blue.jpg",
+      "text": "Devialet 攜手全球代言人F1紅牛車隊車手Isack Hadjar 推出限量 Devialet Phantom Ultimate 98dB Pulse Blue 脈動藍",
+      "url": "https://www.imageaudio.com.tw/products/devialet-phantom-ultimate-98-pb"
+    },
+    {
+      "image": "images/hanshin-b2.jpg",
+      "text": "Devialet 高雄漢神百貨 B2 正式開幕\n10月9日起每個週末凡打卡就送品牌冰淇淋!\n每日限量．送完為止",
+      "url": "https://www.imageaudio.com.tw/blog/posts/devialet-hanshin-pulse-blue"
+    }
+  ],
+  "links": [
+    {
+      "title": "官網 Official Website",
+      "url": "https://www.imageaudio.com.tw"
+    },
+    {
+      "title": "門市據點",
+      "url": "https://www.imageaudio.com.tw/pages/location"
+    },
+    {
+      "title": "LG 專售店 最新優惠",
+      "url": "https://www.imageaudio.com.tw/pages/lg-by-imageaudio-news"
+    }
+  ]
+}

@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>IMAGEAUDIO 映象</title>
+<meta name="description" content="IMAGEAUDIO 映象 — 音響代理、影音規劃、家電經銷。最新消息、官網、門市據點。">
+<meta property="og:title" content="IMAGEAUDIO 映象">
+<meta property="og:description" content="音響代理｜影音規劃｜家電經銷">
+<meta property="og:image" content="images/logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f3f3f3; --text:#111; --mute:#555;
+  --card:#d4c4a8; --btn:#d9d9d9; --btn-hi:#c8c8c8; --ink:#0b0b0b;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{
+  background:var(--bg);color:var(--text);
+  font-family:"Noto Serif TC","Songti TC","PMingLiU","Times New Roman",serif;
+  font-weight:700;min-height:100vh;
+  padding:36px 18px calc(48px + env(safe-area-inset-bottom));
+  display:flex;justify-content:center;
+}
+main{width:100%;max-width:440px}
+a{color:inherit;text-decoration:none;-webkit-tap-highlight-color:transparent}
+
+header{text-align:center}
+.avatar{
+  width:126px;height:126px;border-radius:50%;object-fit:cover;display:block;margin:0 auto;
+  background:#141a2b;
+}
+h1{margin-top:20px;font-size:20px;letter-spacing:.02em}
+.sub{margin-top:14px;font-size:13px;letter-spacing:.02em}
+.icons{display:flex;justify-content:center;gap:22px;margin-top:16px}
+.icons a{width:26px;height:26px;color:#5b5f66;display:block;transition:color .15s}
+.icons a:hover{color:var(--ink)}
+.icons svg{width:100%;height:100%;fill:currentColor}
+hr{width:160px;border:0;border-top:1px solid #777;margin:20px auto 0}
+h2{text-align:center;font-size:17px;margin:22px 0 20px}
+
+.news{display:flex;flex-direction:column;gap:20px}
+.card{background:var(--card);border-radius:34px;padding:6px 6px 28px;text-align:center}
+.card .img{aspect-ratio:4/3;border-radius:28px;overflow:hidden;background:#222}
+.card .img img{width:100%;height:100%;object-fit:cover;display:block}
+.card p{margin:30px 24px 0;font-size:14px;line-height:1.75}
+.card{transition:transform .35s cubic-bezier(.2,.7,.2,1),box-shadow .35s}
+.card .img img{transition:transform .6s cubic-bezier(.2,.7,.2,1)}
+@media (hover:hover){
+  .card:hover{transform:translateY(-6px);box-shadow:0 16px 32px rgba(60,45,20,.22)}
+  .card:hover .img img{transform:scale(1.06)}
+  .card:hover .more{background:#222;letter-spacing:.45em;padding-left:calc(30px + .45em)}
+}
+.more{
+  display:inline-block;margin-top:24px;background:#000;color:#fff;border-radius:999px;
+  padding:13px 30px;font-size:13px;letter-spacing:.35em;padding-left:calc(30px + .35em);
+  transition:transform .15s,background .15s,letter-spacing .35s,padding .35s;
+}
+.more:hover{background:#222}
+.more:active{transform:scale(.97)}
+
+.links{display:flex;flex-direction:column;gap:18px;margin-top:30px}
+.btn{
+  display:block;text-align:center;background:var(--btn);border-radius:14px;
+  padding:17px 12px;font-size:16px;transition:background .15s,transform .15s;
+}
+.btn:hover{background:var(--btn-hi)}
+.btn:active{transform:scale(.985)}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <img class="avatar" src="images/logo.png" alt="IMAGEAUDIO">
+    <h1>IMAGEAUDIO 映象</h1>
+    <p class="sub">音響代理｜影音規劃｜家電經銷</p>
+    <div class="icons" id="icons"></div>
+    <hr>
+  </header>
+
+  <h2>- 最新消息 -</h2>
+  <section class="news" id="news"></section>
+
+  <nav class="links" id="links" aria-label="連結"></nav>
+</main>
+
+<script>
+/* 內容由 data.json 提供，請用 admin.html 後台編輯 */
+const ICONS = {
+  instagram: '<svg viewBox="0 0 24 24"><path d="M12 7.4A4.6 4.6 0 1 0 12 16.6 4.6 4.6 0 0 0 12 7.4Zm0 7.6A3 3 0 1 1 12 9a3 3 0 0 1 0 6Zm5.9-7.8a1.1 1.1 0 1 1-2.2 0 1.1 1.1 0 0 1 2.2 0ZM21.9 8c-.1-1.5-.4-2.8-1.5-3.9S17.9 2.6 16.4 2.5C14.9 2.4 9.1 2.4 7.6 2.5 6.1 2.6 4.8 2.9 3.7 4S2.6 6.5 2.5 8c-.1 1.500-.1 6.500 0 8 .1 1.500.4 2.800 1.500 3.900s2.400 1.400 3.900 1.500c1.500.1 6.500.1 8 0 1.500-.1 2.800-.4 3.900-1.500s1.400-2.400 1.500-3.900c.1-1.500.1-6.500 0-8Zm-2 9.500a3.300 3.300 0 0 1-1.900 1.900c-1.300.5-4.300.4-5.700.4s-4.400.1-5.700-.4a3.300 3.300 0 0 1-1.900-1.900c-.5-1.300-.4-4.300-.4-5.700s-.1-4.400.4-5.700A3.300 3.300 0 0 1 6.300 4.200C7.600 3.700 10.600 3.800 12 3.800s4.400-.1 5.700.4a3.300 3.300 0 0 1 1.900 1.900c.5 1.300.4 4.300.4 5.700s.1 4.400-.4 5.700Z"/></svg>',
+  facebook: '<svg viewBox="0 0 24 24"><path d="M14 8.5V6.800c0-.8.2-1.300 1.400-1.300H17V2.200C16.700 2.200 15.700 2 14.600 2 12.100 2 10.400 3.500 10.400 6.300v2.200H7.600v3.500h2.800V22H14v-10h2.800l.4-3.500H14Z"/></svg>',
+};
+const live = u => u && u !== "#";
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const ext = ' target="_blank" rel="noopener"';
+
+function render(cfg){
+  document.getElementById("icons").innerHTML = cfg.social
+    .filter(s => live(s.url) && ICONS[s.type])
+    .map(s => `<a href="${esc(s.url)}"${ext} aria-label="${s.type}">${ICONS[s.type]}</a>`).join("");
+
+  document.getElementById("news").innerHTML = cfg.news.map(n => `
+    <article class="card">
+      <div class="img"><img src="${esc(n.image)}" alt="" loading="lazy"></div>
+      <p>${esc(n.text).replace(/\n/g, "<br>")}</p>
+      ${live(n.url) ? `<a class="more" href="${esc(n.url)}"${ext}>了解更多</a>` : ""}
+    </article>`).join("");
+
+  document.getElementById("links").innerHTML = cfg.links
+    .filter(l => live(l.url))
+    .map(l => `<a class="btn" href="${esc(l.url)}"${ext}>${esc(l.title)}</a>`).join("");
+}
+fetch("data.json", { cache: "no-cache" })
+  .then(r => r.json())
+  .then(render)
+  .catch(e => console.error("data.json 讀取失敗", e));
+</script>
+</body>
+</html>

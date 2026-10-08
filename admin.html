@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>映象連結頁後台</title>
+<style>
+:root{--bg:#f3f3f3;--card:#fff;--line:#ddd;--text:#161616;--mute:#777;--accent:#111;--danger:#c0392b;--ok:#1e8e4e}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 -apple-system,"Segoe UI","PingFang TC","Microsoft JhengHei",sans-serif;padding:20px 16px 120px}
+.wrap{max-width:720px;margin:0 auto}
+h1{font-size:20px;margin:0 0 4px}
+h2{font-size:16px;margin:32px 0 12px;display:flex;justify-content:space-between;align-items:center}
+.sub{color:var(--mute);font-size:13px;margin-bottom:20px}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:12px}
+label{display:block;font-size:12px;color:var(--mute);margin:10px 0 4px}
+label:first-child{margin-top:0}
+input[type=text],input[type=password],textarea{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;font:inherit;background:#fff;color:var(--text)}
+textarea{min-height:84px;resize:vertical}
+button{font:inherit;cursor:pointer;border:1px solid var(--line);background:#fff;color:var(--text);border-radius:8px;padding:8px 14px}
+button:hover{border-color:#999}
+button.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+button.danger{color:var(--danger)}
+button:disabled{opacity:.5;cursor:not-allowed}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.row.end{justify-content:flex-end}
+.grow{flex:1;min-width:140px}
+.thumb{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:10px;background:#ddd;display:block;margin-bottom:8px}
+.badge{font-size:12px;color:var(--mute)}
+.bar{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);padding:12px 16px;display:flex;gap:12px;align-items:center;justify-content:center;z-index:5}
+.bar .msg{font-size:13px;color:var(--mute);flex:1;max-width:420px}
+.bar .msg.ok{color:var(--ok)}.bar .msg.err{color:var(--danger)}
+.hide{display:none!important}
+.help{font-size:13px;color:var(--mute);line-height:1.7}
+.help b{color:var(--text)}
+.dirty{color:var(--danger)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>映象連結頁後台</h1>
+  <div class="sub" id="repoLine"></div>
+
+  <!-- 登入 -->
+  <section id="login" class="panel">
+    <label>GitHub 存取權杖 (Token)</label>
+    <input type="password" id="token" placeholder="github_pat_..." autocomplete="off">
+    <div class="row end" style="margin-top:12px"><button class="primary" id="loginBtn">登入</button></div>
+    <p class="help" id="loginMsg" style="margin-top:12px"></p>
+    <details class="help" style="margin-top:8px">
+      <summary>如何取得 Token?</summary>
+      <ol>
+        <li>打開 <b>github.com/settings/personal-access-tokens/new</b></li>
+        <li>Repository access 選 <b>Only select repositories</b> → 選 <b>imageaudio-links</b></li>
+        <li>Permissions → Repository permissions → <b>Contents</b> 設為 <b>Read and write</b></li>
+        <li>建立後複製貼到上方(只會顯示一次)</li>
+      </ol>
+      Token 只存在這台裝置的瀏覽器,只能修改這一個 repo。
+    </details>
+  </section>
+
+  <!-- 編輯器 -->
+  <div id="editor" class="hide">
+    <h2>最新消息卡片 <button id="addNews">＋ 新增卡片</button></h2>
+    <div id="newsList"></div>
+
+    <h2>底部按鈕 <button id="addLink">＋ 新增按鈕</button></h2>
+    <div id="linkList"></div>
+
+    <h2>頂部社群圖示</h2>
+    <div class="panel" id="socialBox"></div>
+
+    <div class="row end" style="margin-top:24px"><button id="logout" class="danger">登出(清除此裝置的 Token)</button></div>
+  </div>
+</div>
+
+<div class="bar hide" id="bar">
+  <div class="msg" id="msg"></div>
+  <a href="./" target="_blank" style="font-size:13px">預覽網頁 ↗</a>
+  <button class="primary" id="publish" disabled>發布</button>
+</div>
+
+<script>
+const OWNER = "michelle776", REPO = "imageaudio-links", BRANCH = "master";
+const API = `https://api.github.com/repos/${OWNER}/${REPO}/contents/`;
+const LS = "imageaudioAdminToken";
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+let token = "", data = null, sha = "", dirty = false;
+const pending = {};   // path -> { b64, preview }
+
+$("repoLine").textContent = `${OWNER}/${REPO}`;
+
+/* ---------- GitHub API ---------- */
+async function gh(path, opts = {}) {
+  const r = await fetch(API + path, {
+    ...opts,
+    headers: { Authorization: "Bearer " + token, Accept: "application/vnd.github+json", ...(opts.headers || {}) },
+  });
+  if (!r.ok) {
+    let m = ""; try { m = (await r.json()).message; } catch {}
+    const e = new Error(m || r.statusText); e.status = r.status; throw e;
+  }
+  return r.json();
+}
+const b64utf8 = s => btoa(unescape(encodeURIComponent(s)));
+const fromB64utf8 = s => decodeURIComponent(escape(atob(s.replace(/\n/g, ""))));
+
+async function loadData() {
+  const f = await gh(`data.json?ref=${BRANCH}&t=${Date.now()}`);
+  sha = f.sha;
+  data = JSON.parse(fromB64utf8(f.content));
+  data.social ||= []; data.news ||= []; data.links ||= [];
+}
+
+/* ---------- 狀態列 ---------- */
+function say(text, cls = "") { const m = $("msg"); m.textContent = text; m.className = "msg " + cls; }
+function markDirty() {
+  dirty = true; $("publish").disabled = false;
+  say("有尚未發布的變更", "err");
+}
+
+/* ---------- 圖片壓縮 ---------- */
+function shrink(file, maxW = 1200) {
+  return new Promise((res, rej) => {
+    const img = new Image(), url = URL.createObjectURL(file);
+    img.onload = () => {
+      const k = Math.min(1, maxW / img.width);
+      const c = document.createElement("canvas");
+      c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      const dataUrl = c.toDataURL("image/jpeg", 0.85);
+      res({ dataUrl, b64: dataUrl.split(",")[1] });
+    };
+    img.onerror = () => rej(new Error("無法讀取圖片"));
+    img.src = url;
+  });
+}
+
+/* ---------- 畫面 ---------- */
+function move(arr, i, d) {
+  const j = i + d; if (j < 0 || j >= arr.length) return;
+  [arr[i], arr[j]] = [arr[j], arr[i]]; markDirty(); render();
+}
+function imgSrc(p) { return pending[p]?.dataUrl || p; }
+
+function render() {
+  // 新聞卡片
+  $("newsList").innerHTML = data.news.map((n, i) => `
+    <div class="panel" data-i="${i}">
+      <img class="thumb" src="${esc(imgSrc(n.image))}" alt="">
+      <div class="row"><input type="file" accept="image/*" data-act="img"><span class="badge">上傳後會自動壓縮</span></div>
+      <label>文字(可換行)</label>
+      <textarea data-f="text">${esc(n.text)}</textarea>
+      <label>「了解更多」連結(留空則不顯示按鈕)</label>
+      <input type="text" data-f="url" value="${esc(n.url === "#" ? "" : n.url)}" placeholder="https://">
+      <div class="row end" style="margin-top:12px">
+        <button data-act="up" ${i === 0 ? "disabled" : ""}>↑ 上移</button>
+        <button data-act="down" ${i === data.news.length - 1 ? "disabled" : ""}>↓ 下移</button>
+        <button data-act="del" class="danger">刪除</button>
+      </div>
+    </div>`).join("") || `<p class="help">還沒有卡片。</p>`;
+
+  // 按鈕
+  $("linkList").innerHTML = data.links.map((l, i) => `
+    <div class="panel" data-i="${i}">
+      <label>按鈕文字</label>
+      <input type="text" data-f="title" value="${esc(l.title)}">
+      <label>連結</label>
+      <input type="text" data-f="url" value="${esc(l.url === "#" ? "" : l.url)}" placeholder="https://">
+      <div class="row end" style="margin-top:12px">
+        <button data-act="up" ${i === 0 ? "disabled" : ""}>↑ 上移</button>
+        <button data-act="down" ${i === data.links.length - 1 ? "disabled" : ""}>↓ 下移</button>
+        <button data-act="del" class="danger">刪除</button>
+      </div>
+    </div>`).join("") || `<p class="help">還沒有按鈕。</p>`;
+
+  // 社群
+  const names = { instagram: "Instagram 網址", facebook: "Facebook 網址" };
+  $("socialBox").innerHTML = Object.keys(names).map(t => {
+    const s = data.social.find(x => x.type === t);
+    return `<label>${names[t]}(留空則不顯示圖示)</label>
+            <input type="text" data-social="${t}" value="${esc(s ? s.url : "")}" placeholder="https://">`;
+  }).join("");
+}
+
+/* 事件委派 */
+function bindList(boxId, key) {
+  const box = $(boxId);
+  box.addEventListener("input", e => {
+    const f = e.target.dataset.f; if (!f) return;
+    const i = +e.target.closest("[data-i]").dataset.i;
+    data[key][i][f] = e.target.value; markDirty();
+  });
+  box.addEventListener("click", e => {
+    const act = e.target.dataset.act; if (!act || act === "img") return;
+    const i = +e.target.closest("[data-i]").dataset.i;
+    if (act === "up") move(data[key], i, -1);
+    if (act === "down") move(data[key], i, 1);
+    if (act === "del" && confirm("確定刪除?")) { data[key].splice(i, 1); markDirty(); render(); }
+  });
+  box.addEventListener("change", async e => {
+    if (e.target.dataset.act !== "img" || !e.target.files[0]) return;
+    const i = +e.target.closest("[data-i]").dataset.i;
+    try {
+      say("處理圖片中…");
+      const { dataUrl, b64 } = await shrink(e.target.files[0]);
+      const path = `images/news-${Date.now()}.jpg`;
+      pending[path] = { b64, dataUrl };
+      data[key][i].image = path; markDirty(); render();
+    } catch (err) { say(err.message, "err"); }
+  });
+}
+bindList("newsList", "news"); bindList("linkList", "links");
+
+$("socialBox").addEventListener("input", e => {
+  const t = e.target.dataset.social; if (!t) return;
+  data.social = data.social.filter(s => s.type !== t);
+  if (e.target.value.trim()) data.social.push({ type: t, url: e.target.value.trim() });
+  data.social.sort((a, b) => (b.type === "instagram") - (a.type === "instagram"));
+  markDirty();
+});
+
+$("addNews").onclick = () => { data.news.unshift({ image: "", text: "", url: "" }); markDirty(); render(); };
+$("addLink").onclick = () => { data.links.push({ title: "", url: "" }); markDirty(); render(); };
+
+/* ---------- 發布 ---------- */
+$("publish").onclick = async () => {
+  const btn = $("publish"); btn.disabled = true;
+  try {
+    // 清掉空白項目;空 url 以 "#" 儲存(前台會隱藏)
+    const clean = {
+      social: data.social.filter(s => s.url),
+      news: data.news.filter(n => n.text.trim() || n.image).map(n => ({ ...n, url: n.url.trim() || "#" })),
+      links: data.links.filter(l => l.title.trim()).map(l => ({ ...l, url: l.url.trim() || "#" })),
+    };
+    const used = clean.news.map(n => n.image);
+    for (const [path, p] of Object.entries(pending)) {
+      if (!used.includes(path)) continue;
+      say("上傳圖片…");
+      await gh(path, { method: "PUT", body: JSON.stringify({ message: `admin: add ${path}`, content: p.b64, branch: BRANCH }) });
+    }
+    say("發布中…");
+    const body = { message: "admin: update data.json", content: b64utf8(JSON.stringify(clean, null, 2) + "\n"), sha, branch: BRANCH };
+    let res;
+    try { res = await gh("data.json", { method: "PUT", body: JSON.stringify(body) }); }
+    catch (e) {
+      if (e.status !== 409) throw e;
+      throw new Error("資料已在別處被修改,請重新整理頁面後再編輯。");
+    }
+    sha = res.content.sha;
+    for (const k in pending) delete pending[k];
+    data = clean; dirty = false; render();
+    say("✓ 已發布!約 1 分鐘後網頁更新(按 Ctrl+F5 重新整理查看)", "ok");
+  } catch (e) {
+    say("發布失敗:" + e.message, "err"); btn.disabled = false;
+  }
+};
+
+window.addEventListener("beforeunload", e => { if (dirty) { e.preventDefault(); e.returnValue = ""; } });
+
+/* ---------- 登入 ---------- */
+async function enter() {
+  try {
+    await loadData();
+    $("login").classList.add("hide"); $("editor").classList.remove("hide"); $("bar").classList.remove("hide");
+    render(); say("已載入,編輯後按「發布」");
+  } catch (e) {
+    $("loginMsg").textContent = e.status === 401 || e.status === 403 || e.status === 404
+      ? "Token 無效或沒有這個 repo 的權限(需 Contents: Read and write)。"
+      : "登入失敗:" + e.message;
+    $("loginMsg").classList.add("dirty");
+    localStorage.removeItem(LS);
+  }
+}
+$("loginBtn").onclick = () => {
+  token = $("token").value.trim(); if (!token) return;
+  try { localStorage.setItem(LS, token); } catch {}
+  enter();
+};
+$("token").addEventListener("keydown", e => { if (e.key === "Enter") $("loginBtn").click(); });
+$("logout").onclick = () => { try { localStorage.removeItem(LS); } catch {} location.reload(); };
+
+try { token = localStorage.getItem(LS) || ""; } catch {}
+if (token) enter();
+</script>
+</body>
+</html>
